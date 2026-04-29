@@ -18,7 +18,9 @@ Host ports: **`PUBLIC_PORT:8080`** and **`TAILNET_PORT:9000`** (defaults in comp
 
 - **Client ID** → PKJS `CONFIG.clientId`.
 - **Redirect URI** = `{funnelBase}{redirectPath}` — defaults use **`/oauth/callback`** (`PUBLIC_CALLBACK_PATH` / `CONFIG.redirectPath`).
-- **Public key URL** must be **`{funnelBase}/.well-known/appspecific/com.tesla.3p.public-key.pem`** per [Tesla Fleet API](https://developer.tesla.com/docs/fleet-api/getting-started/what-is-fleet-api) (defaults align with that). Register that exact HTTPS URL in the developer portal. **`PUBLIC_KEY_FILE`** is only where the PEM lives on disk; it can differ from the URL path as long as the server serves the file at **`PUBLIC_KEY_PATH`**.
+- **Allowed Origin** should be the HTTPS origin only (e.g. `https://example.com`), **no trailing slash**. **Allowed Redirect URI** must be the full callback URL, e.g. `https://example.com/oauth/callback` — not the site root alone.
+- **“Domain is not valid”** (Tesla’s message also says the domain must be **registered with a CA**, must **not include “Tesla”**, and must **not be used with a reverse proxy**): **Tailscale Funnel is a reverse proxy**, so the portal can reject **`*.ts.net`** Funnel URLs even when HTTPS works. Funnel is not a viable **Allowed Origin / Redirect** host for Tesla’s form. Use your **own DNS name** with TLS terminated where Tesla expects (often **direct HTTPS to the Pi**: port forward + cert on the Pi, **without** Funnel for that hostname), set PKJS **`funnelBase`** to that **`https://…`** origin, and keep **`tailnetBase`** on Tailscale for phone→Pi. If you must use a VPS or nginx in front, Tesla may still flag it—try **direct-to-Pi** first or contact [Fleet API support](https://developer.tesla.com/docs/fleet-api#help-and-support).
+- **Public key URL** must be **`{funnelBase}/.well-known/appspecific/com.tesla.3p.public-key.pem`** per [Tesla Fleet API](https://developer.tesla.com/docs/fleet-api/getting-started/what-is-fleet-api). **`PUBLIC_KEY_FILE`** is only where the PEM lives on disk; it can differ from the URL path as long as the server serves the file at **`PUBLIC_KEY_PATH`**.
 
 ## EC key pair (Tesla Fleet)
 
@@ -42,6 +44,17 @@ From repo **`server/`**:
 3. **`docker compose up -d --build`**
 
 Logs: **`docker compose logs -f`**.
+
+### Cloudflare Tunnel (custom domain → public listener)
+
+Use this instead of Tailscale Funnel for PKJS **`funnelBase`** when Tesla requires your own domain.
+
+1. Install **`cloudflared`** on the same machine that runs Docker and **`cloudflared tunnel login`** once.
+2. Ensure **`docker compose`** is up so **`127.0.0.1:8080`** reaches the public listener (or set **`TARGET`** / **`PUBLIC_PORT`** to match).
+3. From **`server/`**: **`./scripts/setup-cloudflare-tunnel.sh tesla.example.com`**
+4. Run **`cloudflared tunnel --config ./cloudflared/config.yml run`** (or install a systemd service using the same command).
+
+Set **`funnelBase`** to **`https://tesla.example.com`** (no trailing slash). **`tailnetBase`** stays on Tailscale (**`:9000`**).
 
 ## Tailscale + Funnel
 

@@ -4,3 +4,4 @@
 .env
 /tesla-fleet-keys/*
 !/tesla-fleet-keys/.gitkeep
+/cloudflared/config.yml
