@@ -1,0 +1,10 @@
+pebbletesla-server
+*.md
+.env
+.env.*
+data
+tokens.json
+*.pem
+.git
+docker-compose*.yml
+Dockerfile

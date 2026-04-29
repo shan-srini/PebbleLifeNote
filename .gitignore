@@ -1,2 +1,6 @@
 build/
 node_modules/
+server/pebbletesla-server
+server/tokens.json
+server/.env
+*.pem

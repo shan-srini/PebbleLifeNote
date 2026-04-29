@@ -38,6 +38,9 @@ def build(ctx):
     for p in ctx.env.TARGET_PLATFORMS:
         ctx.set_env(ctx.all_envs[p])
         ctx.set_group(ctx.env.PLATFORM_NAME)
+        # Per-platform generated headers (e.g. resource_ids.auto.h) live in BUILD_DIR/src
+        inc_src = os.path.join(ctx.env.BUILD_DIR, 'src')
+        ctx.env.append_unique('INCLUDES', [inc_src])
         app_elf = '{}/pebble-app.elf'.format(ctx.env.BUILD_DIR)
         ctx.pbl_program(source=ctx.path.ant_glob('src/c/**/*.c'), target=app_elf)
 

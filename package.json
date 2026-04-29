@@ -6,10 +6,24 @@
     "pebble": {
         "displayName": "PebbleTesla",
         "enableMultiJS": true,
-        "messageKeys": [],
+        "messageKeys": {
+            "cmd": 10000,
+            "battery": 10001,
+            "err_code": 10002,
+            "locked": 10003,
+            "climate_on": 10004,
+            "sentry_on": 10005,
+            "auth_state": 10006
+        },
         "projectType": "native",
         "resources": {
-            "media": []
+            "media": [
+                {
+                    "type": "png",
+                    "name": "TESLA_M3",
+                    "file": "images/tesla_model3.png"
+                }
+            ]
         },
         "sdkVersion": "3",
         "uuid": "79297d38-c85e-4db0-8259-71ff69a72ba2",

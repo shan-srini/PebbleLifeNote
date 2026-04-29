@@ -1,0 +1,25 @@
+services:
+  pebbletesla:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: pebbletesla-server:latest
+    restart: unless-stopped
+    ports:
+      - "${PUBLIC_PORT:-8080}:8080"
+      - "${TAILNET_PORT:-9000}:9000"
+    environment:
+      PUBLIC_LISTEN: ":8080"
+      TAILNET_LISTEN: ":9000"
+      FLEET_API_BASE: ${FLEET_API_BASE:-https://fleet-api.prd.na.vn.cloud.tesla.com}
+      PROXY_PREFIX: ${PROXY_PREFIX:-/proxy}
+      PUBLIC_CALLBACK_PATH: ${PUBLIC_CALLBACK_PATH:-/oauth/callback}
+      PUBLIC_KEY_PATH: ${PUBLIC_KEY_PATH:-/tesla/public_key.pem}
+      SHARED_SECRET: ${SHARED_SECRET:-}
+      TOKEN_FILE: /data/tokens.json
+      PUBLIC_KEY_FILE: ${PUBLIC_KEY_FILE:-/data/public_key.pem}
+    volumes:
+      - pebbletesla-data:/data
+
+volumes:
+  pebbletesla-data:

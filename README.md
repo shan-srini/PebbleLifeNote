@@ -42,3 +42,11 @@ Implemented as a regular C Pebble Application
 https://developer.tesla.com/docs/fleet-api/billing-and-limits
 > Monthly discount of $10 is provided to support individual developers/small applications
 Pebble life note helps you take notes for our life. Voice to text translation then a categorization and a todo checklist
+
+## Setup and Configuration
+Currently, I am only supporting my personal vehicle and not exposing this on the Pebble App Store.
+- Using Tailscale to create a private mesh VPN
+- Raspberry PI connected to Tailscale
+- Raspberry PI hosts the Trusted Tesla Proxy Server
+- My iPhone is connected to my own Tailscale VPN, and traffic is directed directly through my VPN to my Raspberry PI
+
