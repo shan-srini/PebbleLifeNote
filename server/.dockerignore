@@ -3,6 +3,7 @@ pebbletesla-server
 .env
 .env.*
 data
+tesla-fleet-keys
 tokens.json
 *.pem
 .git

@@ -2,3 +2,5 @@
 /tokens.json
 *.pem
 .env
+/tesla-fleet-keys/*
+!/tesla-fleet-keys/.gitkeep

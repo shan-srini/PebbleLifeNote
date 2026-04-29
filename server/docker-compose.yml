@@ -5,6 +5,7 @@ services:
       dockerfile: Dockerfile
     image: pebbletesla-server:latest
     restart: unless-stopped
+    # Put secrets in ./.env (gitignored). Compose loads it for ${VAR} in `environment` below.
     ports:
       - "${PUBLIC_PORT:-8080}:8080"
       - "${TAILNET_PORT:-9000}:9000"
@@ -14,12 +15,9 @@ services:
       FLEET_API_BASE: ${FLEET_API_BASE:-https://fleet-api.prd.na.vn.cloud.tesla.com}
       PROXY_PREFIX: ${PROXY_PREFIX:-/proxy}
       PUBLIC_CALLBACK_PATH: ${PUBLIC_CALLBACK_PATH:-/oauth/callback}
-      PUBLIC_KEY_PATH: ${PUBLIC_KEY_PATH:-/tesla/public_key.pem}
+      PUBLIC_KEY_PATH: ${PUBLIC_KEY_PATH:-/.well-known/appspecific/com.tesla.3p.public-key.pem}
       SHARED_SECRET: ${SHARED_SECRET:-}
-      TOKEN_FILE: /data/tokens.json
-      PUBLIC_KEY_FILE: ${PUBLIC_KEY_FILE:-/data/public_key.pem}
+      TOKEN_FILE: ${TOKEN_FILE:-/tesla-fleet-keys/tokens.json}
+      PUBLIC_KEY_FILE: ${PUBLIC_KEY_FILE:-/tesla-fleet-keys/com.tesla.3p.public-key.pem}
     volumes:
-      - pebbletesla-data:/data
-
-volumes:
-  pebbletesla-data:
+      - ./tesla-fleet-keys:/tesla-fleet-keys

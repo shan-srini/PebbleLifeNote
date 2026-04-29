@@ -40,7 +40,7 @@ func loadConfig() Config {
 		PublicListen:       getenv("PUBLIC_LISTEN", ":8080"),
 		TailnetListen:      getenv("TAILNET_LISTEN", ":9000"),
 		PublicCallbackPath: getenv("PUBLIC_CALLBACK_PATH", "/oauth/callback"),
-		PublicKeyPath:      getenv("PUBLIC_KEY_PATH", "/tesla/public_key.pem"),
+		PublicKeyPath:      getenv("PUBLIC_KEY_PATH", "/.well-known/appspecific/com.tesla.3p.public-key.pem"),
 		PublicKeyFile:      getenv("PUBLIC_KEY_FILE", ""),
 		FleetAPIBase:       getenv("FLEET_API_BASE", "https://fleet-api.prd.na.vn.cloud.tesla.com"),
 		ProxyPrefix:        getenv("PROXY_PREFIX", "/proxy"),

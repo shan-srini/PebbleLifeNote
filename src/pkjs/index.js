@@ -9,7 +9,7 @@ var CONFIG = {
   tailnetBase: '',
   sharedSecret: '',
   redirectPath: '/oauth/callback',
-  publicKeyUrlPath: '/tesla/public_key.pem',
+  publicKeyUrlPath: '/.well-known/appspecific/com.tesla.3p.public-key.pem',
   fleetScopes: 'openid offline_access user_data vehicle_device_data vehicle_cmds vehicle_charging_cmds',
   authAuthorizeURL: 'https://auth.tesla.com/oauth2/v3/authorize',
   authTokenURL: 'https://auth.tesla.com/oauth2/v3/token'

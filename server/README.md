@@ -18,18 +18,12 @@ Build and run with [Dockerfile](Dockerfile) and [docker-compose.yml](docker-comp
 
 ```bash
 cd server
-# optional: create .env with SHARED_SECRET, FLEET_API_BASE, etc.
+# Create server/.env with SHARED_SECRET, FLEET_API_BASE, etc. (Compose loads it for ${VAR} in docker-compose.yml)
 docker compose up -d --build
 ```
 
 - Maps **8080** (public: OAuth callback + public key) and **9000** (tailnet API + Fleet proxy). Override host ports with `PUBLIC_PORT` and `TAILNET_PORT` in `.env` or the shell.
-- Persists **`tokens.json`** in the named volume `pebbletesla-data` mounted at `/data`.
-- Place your Tesla **public key PEM** at `/data/public_key.pem` inside the volume (or set `PUBLIC_KEY_FILE` to another path). Example with a bind mount instead of the named volume:
-
-```yaml
-volumes:
-  - ./data:/data
-```
+- **Secrets on disk:** bind-mount **`./tesla-fleet-keys`** → **`/tesla-fleet-keys`** in the container. Defaults: **`com.tesla.3p.public-key.pem`** (same basename [Tesla documents](https://developer.tesla.com/docs/fleet-api/getting-started/what-is-fleet-api) for the public key URL) and **`tokens.json`** (override with `PUBLIC_KEY_FILE` / `TOKEN_FILE` in `.env`).
 
 Ensure `ca-certificates` are present (included in the image) so outbound HTTPS to Tesla works.
 
@@ -40,12 +34,12 @@ Ensure `ca-certificates` are present (included in the image) so outbound HTTPS t
 | `PUBLIC_LISTEN` | `:8080` | Address for Funnel (callback + public key) |
 | `TAILNET_LISTEN` | `:9000` | Address for phone on tailnet (bind to `100.x` or all interfaces + ACLs) |
 | `PUBLIC_CALLBACK_PATH` | `/oauth/callback` | Must match PKJS `CONFIG.redirectPath` and Tesla Developer `redirect_uri` path |
-| `PUBLIC_KEY_PATH` | `/tesla/public_key.pem` | URL path for your registered public key |
-| `PUBLIC_KEY_FILE` | (empty) | Filesystem path to PEM to serve at `PUBLIC_KEY_PATH` |
+| `PUBLIC_KEY_PATH` | `/.well-known/appspecific/com.tesla.3p.public-key.pem` | HTTP path (must match [Tesla’s required URL](https://developer.tesla.com/docs/fleet-api/getting-started/what-is-fleet-api)) |
+| `PUBLIC_KEY_FILE` | (empty in code; compose defaults `/tesla-fleet-keys/com.tesla.3p.public-key.pem`) | Filesystem path to PEM bytes served at `PUBLIC_KEY_PATH` |
 | `FLEET_API_BASE` | `https://fleet-api.prd.na.vn.cloud.tesla.com` | Set EU/NA host per your Tesla app region |
 | `PROXY_PREFIX` | `/proxy` | PKJS calls `tailnet + /proxy + /api/1/...` |
 | `SHARED_SECRET` | (empty) | `X-PebbleTesla-Secret` for **all** tailnet routes; set in production |
-| `TOKEN_FILE` | `tokens.json` | Where OAuth tokens are stored (mode 0600) |
+| `TOKEN_FILE` | `tokens.json` | Where OAuth tokens are stored (mode 0600); compose defaults `/tesla-fleet-keys/tokens.json` |
 
 ## Funnel
 
