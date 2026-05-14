@@ -6,6 +6,9 @@
     "pebble": {
         "displayName": "PebbleTesla",
         "enableMultiJS": true,
+        "targetPlatforms": [
+            "emery"
+        ],
         "messageKeys": {
             "cmd": 10000,
             "battery": 10001,
@@ -13,17 +16,17 @@
             "locked": 10003,
             "climate_on": 10004,
             "sentry_on": 10005,
-            "auth_state": 10006
+            "auth_state": 10006,
+            "range_mi": 10007,
+            "shift": 10008,
+            "vehicle_name": 10009,
+            "charge_subtitle": 10010,
+            "charge_detail": 10011,
+            "charging": 10012
         },
         "projectType": "native",
         "resources": {
-            "media": [
-                {
-                    "type": "png",
-                    "name": "TESLA_M3",
-                    "file": "images/tesla_model3.png"
-                }
-            ]
+            "media": []
         },
         "sdkVersion": "3",
         "uuid": "79297d38-c85e-4db0-8259-71ff69a72ba2",

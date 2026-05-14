@@ -1,4 +1,5 @@
 /pebbletesla-server
+node_modules/
 /tokens.json
 *.pem
 .env

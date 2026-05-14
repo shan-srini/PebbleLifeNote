@@ -1,14 +1,17 @@
 /**
  * PebbleTesla — PebbleKit JS (phone). Configure CONFIG below.
- * OAuth (PKCE) on phone; tokens synced to Pi tailnet; Fleet via Pi proxy.
+ * OAuth (PKCE) on phone; tokens synced to Pi private server; Fleet via Pi proxy.
  */
+
+/** Set true to drive the watch UI with fake numbers (emulator / local preview). Set false for real Tesla data. */
+var USE_MOCK_VEHICLE_DATA = true;
 
 var CONFIG = {
   clientId: '',
   funnelBase: '',
-  tailnetBase: '',
+  privateBase: '',
   sharedSecret: '',
-  redirectPath: '/oauth/callback',
+  redirectPath: '/oauth/redirect',
   publicKeyUrlPath: '/.well-known/appspecific/com.tesla.3p.public-key.pem',
   fleetScopes: 'openid offline_access user_data vehicle_device_data vehicle_cmds vehicle_charging_cmds',
   authAuthorizeURL: 'https://auth.tesla.com/oauth2/v3/authorize',
@@ -36,7 +39,8 @@ var CMD = {
   CHARGE_OPEN: 8,
   CHARGE_CLOSE: 9,
   SENTRY_ON: 10,
-  SENTRY_OFF: 11
+  SENTRY_OFF: 11,
+  LOCATION_PHONE: 13
 };
 
 var AUTH = { OK: 0, NEED: 1 };
@@ -58,7 +62,7 @@ function lsSet(k, v) {
 }
 
 function configureRequired() {
-  return !!(CONFIG.clientId && CONFIG.funnelBase && CONFIG.tailnetBase);
+  return !!(CONFIG.clientId && CONFIG.funnelBase && CONFIG.privateBase);
 }
 
 function redirectUri() {
@@ -70,7 +74,7 @@ function trimSlash(u) {
 }
 
 function proxy(path) {
-  return trimSlash(CONFIG.tailnetBase) + '/proxy' + path;
+  return trimSlash(CONFIG.privateBase) + '/proxy' + path;
 }
 
 function xhr(method, url, headers, body, cb) {
@@ -123,7 +127,7 @@ function sha256Challenge(verifier, cb) {
 }
 
 function postTokensToPi(tokens, cb) {
-  var url = trimSlash(CONFIG.tailnetBase) + '/v1/tokens';
+  var url = trimSlash(CONFIG.privateBase) + '/v1/tokens';
   var body = JSON.stringify({
     access_token: tokens.access_token,
     refresh_token: tokens.refresh_token || '',
@@ -240,7 +244,7 @@ function pollForCode(state, verifier, attempts, cb) {
     cb(new Error('oauth timeout'));
     return;
   }
-  var url = trimSlash(CONFIG.tailnetBase) + '/v1/oauth/poll?state=' + encodeURIComponent(state);
+  var url = trimSlash(CONFIG.privateBase) + '/v1/oauth/poll?state=' + encodeURIComponent(state);
   xhr('GET', url, { 'X-PebbleTesla-Secret': CONFIG.sharedSecret }, null, function (err, status, text) {
     if (!err && status === 200) {
       try {
@@ -325,7 +329,32 @@ function ensureVehicleId(cb) {
   });
 }
 
+/** Same shape as a successful runVehicleData → sendToWatch (screenshot-style demo). */
+function sendMockVehicleDataToWatch() {
+  sendToWatch({
+    vehicle_name: 'Cybertruck',
+    charge_subtitle: '3h 35m remaining',
+    charge_detail: '7kW · 80% limit',
+    charging: 1,
+    battery: 61,
+    range_mi: 220,
+    shift: 'Parked',
+    locked: 1,
+    climate_on: 0,
+    sentry_on: 1,
+    auth_state: AUTH.OK,
+    err_code: ERR.NONE
+  });
+}
+
 function getVehicleData(cb) {
+  if (USE_MOCK_VEHICLE_DATA) {
+    sendMockVehicleDataToWatch();
+    if (cb) {
+      cb(null);
+    }
+    return;
+  }
   refreshIfNeeded(function (re) {
     if (re) {
       cb(re);
@@ -335,6 +364,84 @@ function getVehicleData(cb) {
       runVehicleData(cb);
     });
   });
+}
+
+/** Rated range in miles from charge_state (EPA-style fields vary by region). */
+function rangeMilesFromCharge(charge) {
+  if (!charge || typeof charge !== 'object') return -1;
+  if (typeof charge.battery_range === 'number' && isFinite(charge.battery_range)) {
+    return Math.round(charge.battery_range);
+  }
+  if (typeof charge.est_battery_range === 'number' && isFinite(charge.est_battery_range)) {
+    return Math.round(charge.est_battery_range);
+  }
+  if (typeof charge.ideal_battery_range === 'number' && isFinite(charge.ideal_battery_range)) {
+    return Math.round(charge.ideal_battery_range);
+  }
+  return -1;
+}
+
+function shiftLabelFromDrive(ds) {
+  if (!ds || typeof ds !== 'object') return '--';
+  var s = ds.shift_state;
+  if (!s || typeof s !== 'string') return '--';
+  if (s === 'P') return 'Parked';
+  if (s === 'D') return 'Drive';
+  if (s === 'R') return 'Reverse';
+  if (s === 'N') return 'Neutral';
+  return s;
+}
+
+function truncateWatchStr(s, max) {
+  if (s === null || s === undefined) return '';
+  var t = String(s);
+  return t.length <= max ? t : t.slice(0, max - 1) + '\u2026';
+}
+
+function vehicleDisplayName(resp) {
+  if (!resp || typeof resp !== 'object') return 'Vehicle';
+  if (typeof resp.display_name === 'string' && resp.display_name.length) return resp.display_name;
+  if (resp.vehicle_config && typeof resp.vehicle_config.car_special_type === 'string') return resp.vehicle_config.car_special_type;
+  return 'Vehicle';
+}
+
+function isChargingState(state) {
+  return state === 'Charging' || state === 'Starting' || state === 'Complete';
+}
+
+function formatTimeToFullCharge(hours) {
+  if (typeof hours !== 'number' || !isFinite(hours) || hours <= 0) return '';
+  var h = Math.floor(hours);
+  var m = Math.round((hours - h) * 60);
+  if (m >= 60) {
+    h += 1;
+    m = 0;
+  }
+  return h + 'h ' + m + 'm remaining';
+}
+
+function chargeSubtitleFromCharge(charge, rangeMi) {
+  if (!charge || typeof charge !== 'object') return '--';
+  if (isChargingState(charge.charging_state) && typeof charge.time_to_full_charge === 'number' && charge.time_to_full_charge > 0) {
+    return formatTimeToFullCharge(charge.time_to_full_charge);
+  }
+  if (isChargingState(charge.charging_state)) return 'Charging';
+  if (typeof rangeMi === 'number' && rangeMi >= 0) return rangeMi + ' mi est';
+  return 'Not charging';
+}
+
+function chargeDetailFromCharge(charge) {
+  if (!charge || typeof charge !== 'object') return '--';
+  var kw = typeof charge.charger_power === 'number' && isFinite(charge.charger_power) ? charge.charger_power : null;
+  if (kw == null && charge.charger_voltage && charge.charger_actual_current) {
+    kw = (Number(charge.charger_voltage) * Number(charge.charger_actual_current)) / 1000;
+    kw = Math.round(kw * 10) / 10;
+  }
+  var lim = typeof charge.charge_limit_soc === 'number' ? charge.charge_limit_soc : null;
+  var parts = [];
+  if (kw != null && isFinite(kw)) parts.push(kw + 'kW');
+  if (lim != null) parts.push(lim + '% limit');
+  return parts.length ? parts.join(' \u00b7 ') : '--';
 }
 
 function runVehicleData(cb) {
@@ -363,9 +470,21 @@ function runVehicleData(cb) {
         var charge = resp.charge_state || {};
         var vs = resp.vehicle_state || {};
         var cs = resp.climate_state || {};
+        var ds = resp.drive_state || {};
         var bat = typeof charge.battery_level === 'number' ? charge.battery_level : -1;
+        var rmi = rangeMilesFromCharge(charge);
+        var charging = isChargingState(charge.charging_state) ? 1 : 0;
+        var vname = truncateWatchStr(vehicleDisplayName(resp), 22);
+        var csub = truncateWatchStr(chargeSubtitleFromCharge(charge, rmi), 40);
+        var cdet = truncateWatchStr(chargeDetailFromCharge(charge), 32);
         sendToWatch({
           battery: Math.max(0, Math.min(100, bat)),
+          range_mi: rmi,
+          shift: shiftLabelFromDrive(ds),
+          vehicle_name: vname,
+          charge_subtitle: csub,
+          charge_detail: cdet,
+          charging: charging,
           locked: vs.locked ? 1 : 0,
           climate_on: cs.is_preconditioning ? 1 : 0,
           sentry_on: vs.sentry_mode ? 1 : 0,
@@ -465,6 +584,13 @@ function sendToWatch(msg) {
 }
 
 function handleCmd(cmd) {
+  if (USE_MOCK_VEHICLE_DATA) {
+    if (cmd === CMD.SIGN_IN || cmd === CMD.LOCATION_PHONE) {
+      return;
+    }
+    sendMockVehicleDataToWatch();
+    return;
+  }
   if (!configureRequired()) {
     sendToWatch({ auth_state: AUTH.NEED, err_code: ERR.CONFIG });
     return;
@@ -487,10 +613,17 @@ function handleCmd(cmd) {
     });
     return;
   }
+  if (cmd === CMD.LOCATION_PHONE) {
+    return;
+  }
   handleVehicleCommand(cmd);
 }
 
 Pebble.addEventListener('ready', function () {
+  if (USE_MOCK_VEHICLE_DATA) {
+    sendMockVehicleDataToWatch();
+    return;
+  }
   if (!configureRequired()) {
     sendToWatch({ auth_state: AUTH.NEED, err_code: ERR.CONFIG });
     return;

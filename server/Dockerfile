@@ -1,14 +1,14 @@
-# PebbleTesla API server (public Funnel surface + tailnet proxy)
-FROM golang:1.22-alpine AS build
-WORKDIR /src
-COPY go.mod ./
-COPY *.go ./
-RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /pebbletesla-server .
-
-FROM alpine:3.20
+# PebbleTesla API server (public + private HTTP servers)
+FROM node:22-alpine
 RUN apk add --no-cache ca-certificates
-COPY --from=build /pebbletesla-server /usr/local/bin/pebbletesla-server
-WORKDIR /data
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev && npm cache clean --force
+COPY index.js ./
+COPY lib ./lib/
+COPY scripts ./scripts/
+RUN mkdir -p /data
 ENV TOKEN_FILE=/data/tokens.json
+WORKDIR /data
 EXPOSE 8080 9000
-ENTRYPOINT ["/usr/local/bin/pebbletesla-server"]
+CMD ["node", "/app/index.js"]

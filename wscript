@@ -35,7 +35,11 @@ def build(ctx):
     build_worker = os.path.exists('worker_src')
     binaries = []
 
-    for p in ctx.env.TARGET_PLATFORMS:
+    # Emery only (see package.json pebble.targetPlatforms). Skip any other SDK default platforms.
+    emery_only = [p for p in ctx.env.TARGET_PLATFORMS if p == 'emery']
+    if not emery_only:
+        ctx.fatal('No emery target: set pebble.targetPlatforms to include "emery" in package.json')
+    for p in emery_only:
         ctx.set_env(ctx.all_envs[p])
         ctx.set_group(ctx.env.PLATFORM_NAME)
         # Per-platform generated headers (e.g. resource_ids.auto.h) live in BUILD_DIR/src
